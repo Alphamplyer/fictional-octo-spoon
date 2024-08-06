@@ -1,0 +1,68 @@
+name: fictional-octo-spoon
+
+services:
+  api:
+    container_name: fos-api
+    build:
+      dockerfile: ./docker/nestjs/Dockerfile
+      context: .
+      # Only will build development stage from our dockerfile
+      target: ${NODE_ENV}
+    restart: unless-stopped
+    env_file:
+    - .env
+    # Run a command against the development stage of the image
+    command: npm run start:dev
+    volumes:
+      - .:/usr/src/app
+    networks:
+      - backend_network
+    ports:
+      - ${PORT}:3000
+    depends_on:
+      - postgres
+
+  postgres:
+    container_name: fos-postgres-db
+    image: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - ./database/postgres-init-user-db.sh:/docker-entrypoint-initdb.d/init-user-db.sh
+      - ./database:/database_migrations
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend_network
+    ports:
+      - '${DB_PORT}:5432'
+
+  pgadmin:
+    container_name: fos-pgadmin
+    image: dpage/pgadmin4
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    volumes:
+    - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - backend_network
+    ports:
+      - '5050:80'
+    depends_on:
+      - postgres
+
+networks:
+  backend_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  pgadmin_data:
